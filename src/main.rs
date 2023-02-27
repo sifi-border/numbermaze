@@ -51,13 +51,21 @@ impl MazeState {
         self.turn == END_TURN
     }
 
-    fn advance(&mut self, next_coord: Coord) {
+    // overwrite current state
+    fn update(&mut self, next_coord: Coord) {
         let point = &mut self.points[next_coord.y][next_coord.x];
         self.game_score += *point;
         *point = 0;
 
         self.character = next_coord;
         self.turn += 1;
+    }
+
+    // do the action once, and return score
+    fn advance(&self, next_coord: Coord) -> ScoreType {
+        let mut score = self.game_score;
+        score += self.points[next_coord.y][next_coord.x];
+        score
     }
 
     fn legal_actions(&self) -> Vec<Coord> {
@@ -118,17 +126,36 @@ impl fmt::Display for MazeState {
 }
 
 type State = MazeState;
+type ScoreType = i32;
 
 fn random_action(state: &State, rng: &mut rand::rngs::StdRng) -> Coord {
     let next_coords = state.legal_actions();
     next_coords[rng.gen::<usize>() % next_coords.len()]
 }
 
+fn greedy_action(state: &State) -> Option<Coord> {
+    let legal_actions = state.legal_actions();
+
+    let mut best_score = ScoreType::MIN;
+    let mut best_action = None;
+    for action in legal_actions {
+        let next_score = state.advance(action);
+        if best_score < next_score {
+            best_score = next_score;
+            best_action = Some(action);
+        }
+    }
+    best_action
+}
+
 fn play_game(seed: u8, rng: &mut rand::rngs::StdRng) {
     let mut state = State::new(seed);
     println!("{}", state);
     while !state.is_done() {
-        state.advance(random_action(&state, rng));
+        match greedy_action(&state) {
+            Some(action) => state.update(action),
+            None => panic!("No action found!"),
+        }
         println!("{}", state);
     }
 }
