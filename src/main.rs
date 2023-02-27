@@ -36,7 +36,7 @@ impl MazeState {
                 if h == character.y && w == character.x {
                     continue;
                 }
-                points[h][w] = (rng.gen::<i32>() % 10 + 10) % 10;
+                points[h][w] = rng.gen_range(0..10);
             }
         }
         MazeState {
