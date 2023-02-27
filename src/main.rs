@@ -91,7 +91,8 @@ impl MazeState {
                 y: self.character.y - 1,
             });
         }
-        if self.character.x < H - 1 {
+
+        if self.character.y < H - 1 {
             next_coords.push(Coord {
                 x: self.character.x,
                 y: self.character.y + 1,
