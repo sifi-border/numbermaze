@@ -161,8 +161,41 @@ fn play_game(seed: u8, rng: &mut rand::rngs::StdRng) {
     }
 }
 
+fn test_random_score(game_number: u32, rng_for_action: &mut rand::rngs::StdRng) {
+    let mut rng_for_construct: rand::rngs::StdRng = rand::SeedableRng::from_seed([0; 32]);
+    let mut score_sum = 0.;
+    for _ in 0..game_number {
+        let mut state = State::new(rng_for_construct.gen::<u8>());
+        while !state.is_done() {
+            state.update(random_action(&state, rng_for_action));
+        }
+        score_sum += state.game_score as f64;
+    }
+    let score_mean = score_sum / game_number as f64;
+    println!("Score:\t{}", score_mean);
+}
+
+fn test_greedy_score(game_number: u32, rng_for_action: &mut rand::rngs::StdRng) {
+    let mut rng_for_construct: rand::rngs::StdRng = rand::SeedableRng::from_seed([0; 32]);
+    let mut score_sum = 0.;
+    for _ in 0..game_number {
+        let mut state = State::new(rng_for_construct.gen::<u8>());
+        while !state.is_done() {
+            match greedy_action(&state) {
+                Some(action) => state.update(action),
+                None => panic!("No action found!"),
+            }
+        }
+        score_sum += state.game_score as f64;
+    }
+    let score_mean = score_sum / game_number as f64;
+    println!("Score:\t{}", score_mean);
+}
+
 fn main() {
     let seed = 1;
     let mut rng_for_action: rand::rngs::StdRng = rand::SeedableRng::from_seed([0; 32]);
-    play_game(seed, &mut rng_for_action);
+    // play_game(seed, &mut rng_for_action);
+    // test_random_score(100, &mut rng_for_action);
+    test_greedy_score(100, &mut rng_for_action);
 }
