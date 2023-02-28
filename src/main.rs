@@ -11,11 +11,11 @@ struct Coord {
 
 const H: usize = 3; //迷路の高さ
 const W: usize = 4; //迷路の幅
-const END_TURN: i32 = 4; //ゲーム終了ターン
+const END_TURN: u32 = 4; //ゲーム終了ターン
 
 struct MazeState {
-    points: Vec<Vec<i32>>,
-    turn: i32,
+    points: Vec<Vec<ScoreType>>,
+    turn: u32,
     pub character: Coord,
     pub game_score: i32,
 }
@@ -29,7 +29,7 @@ impl MazeState {
             x: rng.gen::<usize>() % W,
             y: rng.gen::<usize>() % H,
         };
-        let mut points = vec![vec![0i32; W]; H];
+        let mut points = vec![vec![0 as ScoreType; W]; H];
 
         for h in 0..H {
             for w in 0..W {
