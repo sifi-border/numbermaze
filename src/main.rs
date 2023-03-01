@@ -105,6 +105,7 @@ impl MazeState {
     }
 }
 
+// visualize state
 impl fmt::Display for MazeState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut maze_string = String::from(format!(
