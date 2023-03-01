@@ -1,7 +1,7 @@
 use core::fmt;
-use std::collections::BinaryHeap;
-
 use rand::prelude::*;
+use std::collections::BinaryHeap;
+use std::time;
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 struct Coord {
@@ -9,9 +9,9 @@ struct Coord {
     y: usize,
 }
 
-const H: usize = 3; //迷路の高さ
-const W: usize = 4; //迷路の幅
-const END_TURN: u32 = 4; //ゲーム終了ターン
+const H: usize = 30; //迷路の高さ
+const W: usize = 40; //迷路の幅
+const END_TURN: u32 = 100; //ゲーム終了ターン
 
 #[derive(Eq, PartialEq, Clone)]
 struct MazeState {
@@ -198,6 +198,48 @@ fn beamsearch_action(initial_state: &State, beam_width: u32, beam_depth: u32) ->
     wrapped_best_state?.first_action
 }
 
+fn beamsearch_action_with_timelimit(
+    initial_state: &State,
+    beam_width: u32,
+    time_threshold_in_millis: u64,
+) -> Action {
+    let time_keeper = TimeKeeper::new(time_threshold_in_millis);
+
+    let mut current_beam = BinaryHeap::new();
+    let mut wrapped_best_state: Option<MazeState> = None;
+    current_beam.push(initial_state.clone());
+
+    for d in 0.. {
+        let mut next_beam = BinaryHeap::new();
+        for _w in 0..beam_width {
+            if time_keeper.is_timeover() {
+                return wrapped_best_state?.first_action;
+            }
+
+            let wrapped_state = current_beam.pop();
+            if wrapped_state == None {
+                break;
+            }
+            let current_state = wrapped_state.unwrap();
+            let legal_actions = current_state.legal_coords();
+            for action in legal_actions {
+                let mut next_state = current_state.clone();
+                next_state.update(action);
+                if d == 0 {
+                    next_state.first_action = Some(action);
+                }
+                next_beam.push(next_state);
+            }
+        }
+        current_beam = next_beam;
+        if current_beam.peek() != None {
+            wrapped_best_state = Some(current_beam.peek().unwrap().clone());
+        }
+    }
+
+    wrapped_best_state?.first_action
+}
+
 fn play_game(seed: u8, rng: &mut rand::rngs::StdRng) {
     let mut state = State::new(seed);
     println!("{}", state);
@@ -261,11 +303,52 @@ fn test_beamsearch_score(game_number: u32, beam_width: u32, beam_depth: u32) {
     println!("Beam Search Score:\t{}", score_mean);
 }
 
+fn test_beamsearch_score_with_timelimit(
+    game_number: u32,
+    beam_width: u32,
+    time_threshold_in_millis: u64,
+) {
+    let mut rng_for_construct: rand::rngs::StdRng = rand::SeedableRng::from_seed([0; 32]);
+    let mut score_sum = 0.;
+    for _ in 0..game_number {
+        let mut state = State::new(rng_for_construct.gen::<u8>());
+        while !state.is_done() {
+            match beamsearch_action_with_timelimit(&state, beam_width, time_threshold_in_millis) {
+                Some(action) => state.update(action),
+                None => panic!("No action found!"),
+            }
+        }
+        score_sum += state.game_score as f64;
+    }
+    let score_mean = score_sum / game_number as f64;
+    println!("Beam Search Score:\t{}", score_mean);
+}
+// 時間を管理する構造体
+struct TimeKeeper {
+    start_time: time::Instant,
+    time_threshold: time::Duration,
+}
+
+impl TimeKeeper {
+    fn new(time_threshold_in_millis: u64) -> Self {
+        TimeKeeper {
+            start_time: time::Instant::now(),
+            time_threshold: time::Duration::from_millis(time_threshold_in_millis),
+        }
+    }
+
+    fn is_timeover(&self) -> bool {
+        let current_time = time::Instant::now();
+        self.start_time + self.time_threshold <= current_time
+    }
+}
+
 fn main() {
     let seed = 1;
     // let mut rng_for_action: rand::rngs::StdRng = rand::SeedableRng::from_seed([0; 32]);
     // play_game(seed, &mut rng_for_action);
     // test_random_score(100, &mut rng_for_action);
-    test_greedy_score(100);
-    test_beamsearch_score(100, 2, END_TURN);
+    // test_greedy_score(100);
+    // test_beamsearch_score(100, 2, END_TURN);
+    test_beamsearch_score_with_timelimit(100, 5, 10);
 }
