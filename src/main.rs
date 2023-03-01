@@ -19,7 +19,7 @@ struct MazeState {
     turn: u32,
     pub character: Coord,
     pub game_score: i32,
-    first_action: i32,
+    first_action: Action,
 }
 
 impl MazeState {
@@ -46,7 +46,7 @@ impl MazeState {
             turn: 0,
             character,
             game_score: 0,
-            first_action: -1,
+            first_action: None,
         }
     }
 
@@ -143,6 +143,7 @@ impl fmt::Display for MazeState {
 }
 
 type State = MazeState;
+type Action = Option<Coord>;
 type ScoreType = i32;
 
 fn random_action(state: &State, rng: &mut rand::rngs::StdRng) -> Coord {
