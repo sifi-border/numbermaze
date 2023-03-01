@@ -13,6 +13,7 @@ const H: usize = 3; //迷路の高さ
 const W: usize = 4; //迷路の幅
 const END_TURN: u32 = 4; //ゲーム終了ターン
 
+#[derive(Eq, PartialEq)]
 struct MazeState {
     points: Vec<Vec<ScoreType>>,
     turn: u32,
@@ -102,6 +103,18 @@ impl MazeState {
         }
 
         next_coords
+    }
+}
+
+impl Ord for MazeState {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.game_score.cmp(&other.game_score)
+    }
+}
+
+impl PartialOrd for MazeState {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.game_score.cmp(&other.game_score))
     }
 }
 
