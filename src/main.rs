@@ -3,7 +3,7 @@ use std::fmt::{format, write};
 
 use rand::prelude::*;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 struct Coord {
     x: usize,
     y: usize,
