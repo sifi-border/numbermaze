@@ -323,7 +323,7 @@ fn test_beamsearch_score_with_timelimit(
     let score_mean = score_sum / game_number as f64;
     println!("Beam Search Score:\t{}", score_mean);
 }
-// 時間を管理する構造体
+
 struct TimeKeeper {
     start_time: time::Instant,
     time_threshold: time::Duration,
