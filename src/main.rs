@@ -18,6 +18,7 @@ struct MazeState {
     turn: u32,
     pub character: Coord,
     pub game_score: i32,
+    first_action: i32,
 }
 
 impl MazeState {
@@ -44,6 +45,7 @@ impl MazeState {
             turn: 0,
             character,
             game_score: 0,
+            first_action: -1,
         }
     }
 
