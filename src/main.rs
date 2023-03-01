@@ -17,8 +17,8 @@ const END_TURN: u32 = 4; //ゲーム終了ターン
 struct MazeState {
     points: Vec<Vec<ScoreType>>,
     turn: u32,
-    pub character: Coord,
-    pub game_score: i32,
+    character: Coord,
+    game_score: i32,
     first_action: Action,
 }
 
