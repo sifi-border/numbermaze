@@ -1,5 +1,5 @@
 use core::fmt;
-use std::fmt::{format, write};
+use std::collections::BinaryHeap;
 
 use rand::prelude::*;
 
@@ -13,7 +13,7 @@ const H: usize = 3; //迷路の高さ
 const W: usize = 4; //迷路の幅
 const END_TURN: u32 = 4; //ゲーム終了ターン
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 struct MazeState {
     points: Vec<Vec<ScoreType>>,
     turn: u32,
@@ -71,7 +71,7 @@ impl MazeState {
         score
     }
 
-    fn legal_actions(&self) -> Vec<Coord> {
+    fn legal_coords(&self) -> Vec<Coord> {
         let mut next_coords: Vec<Coord> = vec![];
 
         if self.character.x > 0 {
@@ -146,13 +146,17 @@ type State = MazeState;
 type Action = Option<Coord>;
 type ScoreType = i32;
 
-fn random_action(state: &State, rng: &mut rand::rngs::StdRng) -> Coord {
-    let next_coords = state.legal_actions();
-    next_coords[rng.gen::<usize>() % next_coords.len()]
+fn random_action(state: &State, rng: &mut rand::rngs::StdRng) -> Action {
+    let next_coords = state.legal_coords();
+    if next_coords.len() == 0 {
+        None
+    } else {
+        Some(next_coords[rng.gen::<usize>() % next_coords.len()])
+    }
 }
 
-fn greedy_action(state: &State) -> Option<Coord> {
-    let legal_actions = state.legal_actions();
+fn greedy_action(state: &State) -> Action {
+    let legal_actions = state.legal_coords();
 
     let mut best_score = ScoreType::MIN;
     let mut best_action = None;
@@ -164,6 +168,34 @@ fn greedy_action(state: &State) -> Option<Coord> {
         }
     }
     best_action
+}
+
+fn beamsearch_action(initial_state: &State, beam_width: u32, beam_depth: u32) -> Action {
+    let mut current_beam = BinaryHeap::new();
+    let mut wrapped_best_state = None;
+    current_beam.push(initial_state.clone());
+    for d in 0..beam_depth {
+        let mut next_beam = BinaryHeap::new();
+        for _w in 0..beam_width {
+            let wrapped_state = current_beam.pop();
+            if wrapped_state == None {
+                break;
+            }
+            let current_state = wrapped_state.unwrap();
+            let legal_actions = current_state.legal_coords();
+            for action in legal_actions {
+                let mut next_state = current_state.clone();
+                next_state.update(action);
+                if d == 0 {
+                    next_state.first_action = Some(action);
+                }
+                next_beam.push(next_state);
+            }
+        }
+        current_beam = next_beam;
+        wrapped_best_state = current_beam.peek();
+    }
+    wrapped_best_state?.first_action
 }
 
 fn play_game(seed: u8, rng: &mut rand::rngs::StdRng) {
@@ -184,15 +216,18 @@ fn test_random_score(game_number: u32, rng_for_action: &mut rand::rngs::StdRng) 
     for _ in 0..game_number {
         let mut state = State::new(rng_for_construct.gen::<u8>());
         while !state.is_done() {
-            state.update(random_action(&state, rng_for_action));
+            match random_action(&state, rng_for_action) {
+                Some(action) => state.update(action),
+                None => panic!("No action found!"),
+            }
         }
         score_sum += state.game_score as f64;
     }
     let score_mean = score_sum / game_number as f64;
-    println!("Score:\t{}", score_mean);
+    println!("Random Score:\t{}", score_mean);
 }
 
-fn test_greedy_score(game_number: u32, rng_for_action: &mut rand::rngs::StdRng) {
+fn test_greedy_score(game_number: u32) {
     let mut rng_for_construct: rand::rngs::StdRng = rand::SeedableRng::from_seed([0; 32]);
     let mut score_sum = 0.;
     for _ in 0..game_number {
@@ -206,13 +241,31 @@ fn test_greedy_score(game_number: u32, rng_for_action: &mut rand::rngs::StdRng) 
         score_sum += state.game_score as f64;
     }
     let score_mean = score_sum / game_number as f64;
-    println!("Score:\t{}", score_mean);
+    println!("Greedy Score:\t{}", score_mean);
+}
+
+fn test_beamsearch_score(game_number: u32, beam_width: u32, beam_depth: u32) {
+    let mut rng_for_construct: rand::rngs::StdRng = rand::SeedableRng::from_seed([0; 32]);
+    let mut score_sum = 0.;
+    for _ in 0..game_number {
+        let mut state = State::new(rng_for_construct.gen::<u8>());
+        while !state.is_done() {
+            match beamsearch_action(&state, beam_width, beam_depth) {
+                Some(action) => state.update(action),
+                None => panic!("No action found!"),
+            }
+        }
+        score_sum += state.game_score as f64;
+    }
+    let score_mean = score_sum / game_number as f64;
+    println!("Beam Search Score:\t{}", score_mean);
 }
 
 fn main() {
     let seed = 1;
-    let mut rng_for_action: rand::rngs::StdRng = rand::SeedableRng::from_seed([0; 32]);
+    // let mut rng_for_action: rand::rngs::StdRng = rand::SeedableRng::from_seed([0; 32]);
     // play_game(seed, &mut rng_for_action);
     // test_random_score(100, &mut rng_for_action);
-    test_greedy_score(100, &mut rng_for_action);
+    test_greedy_score(100);
+    test_beamsearch_score(100, 2, END_TURN);
 }
