@@ -1,6 +1,6 @@
 use core::fmt;
 use rand::prelude::*;
-use std::collections::BinaryHeap;
+use std::collections::{binary_heap, BinaryHeap};
 use std::time;
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -10,7 +10,7 @@ struct Coord {
 }
 
 const H: usize = 30; //迷路の高さ
-const W: usize = 40; //迷路の幅
+const W: usize = 30; //迷路の幅
 const END_TURN: u32 = 100; //ゲーム終了ターン
 
 #[derive(Eq, PartialEq, Clone)]
@@ -240,6 +240,50 @@ fn beamsearch_action_with_timelimit(
     wrapped_best_state?.first_action
 }
 
+fn chokudaisearch_action_with_timelimit(
+    initial_state: &State,
+    beam_depth: usize,
+    beam_width: usize,
+    time_threshold_in_millis: u64,
+) -> Action {
+    let time_keeper = TimeKeeper::new(time_threshold_in_millis);
+    let mut beam_vec: Vec<BinaryHeap<State>> = vec![BinaryHeap::new(); beam_depth + 1];
+    beam_vec[0].push(initial_state.clone());
+    loop {
+        for d in 0..beam_depth {
+            // current_beam := beam_vec[d]
+            // next_beam    := beam_vec[d+1]
+            for _w in 0..beam_width {
+                if beam_vec[d].is_empty() {
+                    break;
+                }
+                let current_state = beam_vec[d].pop()?.clone();
+                let legal_actions = current_state.legal_coords();
+
+                for action in legal_actions {
+                    let mut next_state = current_state.clone();
+                    next_state.update(action);
+                    if d == 0 {
+                        next_state.first_action = Some(action);
+                    }
+                    beam_vec[d + 1].push(next_state);
+                }
+            }
+        }
+        if time_keeper.is_timeover() {
+            break;
+        }
+    }
+    for d in (0..=beam_depth).rev() {
+        if beam_vec[d].is_empty() {
+            continue;
+        }
+        return beam_vec[d].peek()?.first_action;
+    }
+
+    None
+}
+
 fn play_game(seed: u8, rng: &mut rand::rngs::StdRng) {
     let mut state = State::new(seed);
     println!("{}", state);
@@ -324,6 +368,32 @@ fn test_beamsearch_score_with_timelimit(
     println!("Beam Search Score:\t{}", score_mean);
 }
 
+fn test_chokudaisearch_score_with_timelimit(
+    game_number: u32,
+    beam_width: usize,
+    time_threshold_in_millis: u64,
+) {
+    let mut rng_for_construct: rand::rngs::StdRng = rand::SeedableRng::from_seed([0; 32]);
+    let mut score_sum = 0.;
+    for _ in 0..game_number {
+        let mut state = State::new(rng_for_construct.gen::<u8>());
+        while !state.is_done() {
+            match chokudaisearch_action_with_timelimit(
+                &state,
+                END_TURN as usize,
+                beam_width,
+                time_threshold_in_millis,
+            ) {
+                Some(action) => state.update(action),
+                None => panic!("No action found!"),
+            }
+        }
+        score_sum += state.game_score as f64;
+    }
+    let score_mean = score_sum / game_number as f64;
+    println!("Chokudai Search Score:\t{}", score_mean);
+}
+
 struct TimeKeeper {
     start_time: time::Instant,
     time_threshold: time::Duration,
@@ -344,11 +414,12 @@ impl TimeKeeper {
 }
 
 fn main() {
-    let seed = 1;
+    let seed = 10;
     // let mut rng_for_action: rand::rngs::StdRng = rand::SeedableRng::from_seed([0; 32]);
     // play_game(seed, &mut rng_for_action);
     // test_random_score(100, &mut rng_for_action);
     // test_greedy_score(100);
     // test_beamsearch_score(100, 2, END_TURN);
-    test_beamsearch_score_with_timelimit(100, 5, 10);
+    // test_beamsearch_score_with_timelimit(100, 5, 10);
+    test_chokudaisearch_score_with_timelimit(100, 1, 10);
 }
