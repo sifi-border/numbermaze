@@ -254,10 +254,10 @@ fn chokudaisearch_action_with_timelimit(
             // current_beam := beam_vec[d]
             // next_beam    := beam_vec[d+1]
             for _w in 0..beam_width {
-                if beam_vec[d].is_empty() {
+                if beam_vec[d].is_empty() || beam_vec[d].peek()?.is_done() {
                     break;
-                }
-                let current_state = beam_vec[d].pop()?.clone();
+                };
+                let current_state = beam_vec[d].pop().unwrap().clone();
                 let legal_actions = current_state.legal_coords();
 
                 for action in legal_actions {
